@@ -1,0 +1,12 @@
+projecao_obras:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: khb56279.us-east-1
+      user: luciana.mendes@equatorialenergia.com.br
+      authenticator: externalbrowser
+      role: GRP_SWF_OBRAS_AT
+      database: SB_OBRAS_AT
+      schema: EQTL_MA
+      warehouse: WH_EQTLINFO
