@@ -109,13 +109,13 @@ select{font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid #e2e8f
 .gantt-status{font-size:11px;width:14px;flex-shrink:0}
 
 /* TABELA */
-.table-card{background:#fff;border-radius:10px;padding:16px 18px;border:1px solid #e2e8f0}
+.table-card{background:#fff;border-radius:10px;padding:16px 18px;border:1px solid #e2e8f0}.table-card .table-scroll{max-height:400px;overflow-y:auto;border-radius:6px}
 .table-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
 .table-title{font-size:13px;font-weight:600;color:#2d3748}
 .btn-download{padding:7px 16px;background:#fff;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px;font-weight:600;color:#4a5568;cursor:pointer;margin-left:auto}
 .btn-download:hover{border-color:#2d6a4f;color:#2d6a4f}
 table{width:100%;border-collapse:collapse;font-size:12px}
-th{background:#f7fafc;padding:8px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#718096;border-bottom:2px solid #e2e8f0}
+th{background:#f7fafc;padding:8px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#718096;border-bottom:2px solid #e2e8f0;position:sticky;top:0;z-index:10}
 td{padding:8px 10px;border-bottom:1px solid #f0f4f8;color:#2d3748}
 tr:hover td{background:#f7fafc}
 tr:last-child td{border-bottom:none}
@@ -303,7 +303,7 @@ html,body{height:100%;overflow:hidden}
         <div class="table-title">📋 Tarefas</div>
         <button class="btn-download" onclick="exportarCSV()">⬇️ Exportar CSV</button>
       </div>
-      <table>
+      <div class="table-scroll"><table>
         <thead><tr>
           <th>Tarefa</th><th>% Concl.</th><th>Status</th><th>Crítica</th>
           <th>Início LB</th><th>Término LB</th>
@@ -311,7 +311,7 @@ html,body{height:100%;overflow:hidden}
           <th id="th-origem">Origem</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
-      </table>
+      </table></div>
     </div>
   </div>
 </div>
@@ -700,151 +700,18 @@ function showTyping(){
   msgs.appendChild(div); msgs.scrollTop=msgs.scrollHeight;
 }
 function removeTyping(){ const t=document.getElementById('typing-ind'); if(t)t.remove(); }
-// ── Respostas automáticas baseadas nos dados do painel ──────────
-function responderLocal(pergunta) {
-  const p = pergunta.toLowerCase();
-  const obra = OBRAS[obraAtiva];
-  const todasObras = Object.entries(OBRAS);
-
-  // ── O que está em risco? ──────────────────────────────────────
-  if (p.includes('risco') || p.includes('perigo')) {
-    const criticas = todasObras.filter(([,o]) => o.badge === 'badge-crit');
-    const atencao  = todasObras.filter(([,o]) => o.badge === 'badge-att');
-    if (criticas.length === 0 && atencao.length === 0)
-      return '<span class="hi">✅ Nenhuma obra em situação crítica no momento.</span>';
-    let r = `<span class="warn">⚠️ ${criticas.length} obra(s) crítica(s)</span> e <span class="note">${atencao.length} em atenção</span>:<br><br>`;
-    criticas.slice(0,5).forEach(([nome, o]) => {
-      r += `🔴 <strong>${nome.replace(/EQTL [A-Z]{2}_/,'')}</strong> — ${o.status}<br>`;
-    });
-    atencao.slice(0,3).forEach(([nome, o]) => {
-      r += `🟡 <strong>${nome.replace(/EQTL [A-Z]{2}_/,'')}</strong> — ${o.status}<br>`;
-    });
-    return r;
-  }
-
-  // ── Obras críticas ────────────────────────────────────────────
-  if (p.includes('crítica') || p.includes('critica') || p.includes('crítico')) {
-    const criticas = todasObras.filter(([,o]) => o.badge === 'badge-crit');
-    if (criticas.length === 0)
-      return '<span class="hi">✅ Nenhuma obra crítica no momento!</span>';
-    let r = `<span class="warn">🔴 ${criticas.length} obra(s) com atraso crítico (>30 dias):</span><br><br>`;
-    criticas.forEach(([nome, o]) => {
-      const m = o.status.match(/(\d+) dias/);
-      const dias = m ? parseInt(m[1]) : 0;
-      r += `<strong>${nome.replace(/EQTL [A-Z]{2}_/,'')}</strong> — <span class="warn">${dias} dias de atraso</span><br>`;
-      r += `<span style="font-size:11px;color:#718096">Baseline: ${o.sub}</span><br><br>`;
-    });
-    return r;
-  }
-
-  // ── Tarefas que atrasam ───────────────────────────────────────
-  if (p.includes('tarefa') || p.includes('atras') || p.includes('atrasa')) {
-    const atrasadas = obra.tarefas.filter(t => !t.resumo && t.status === 'atrasada');
-    if (atrasadas.length === 0)
-      return `<span class="hi">✅ Nenhuma tarefa atrasada em <strong>${obraAtiva.replace(/EQTL [A-Z]{2}_/,'')}</strong>!</span>`;
-    let r = `<span class="warn">🔴 ${atrasadas.length} tarefa(s) atrasada(s)</span> em <strong>${obraAtiva.replace(/EQTL [A-Z]{2}_/,'')}</strong>:<br><br>`;
-    atrasadas.slice(0,6).forEach(t => {
-      r += `• <strong>${t.nome}</strong> (${t.pct}%) → <span class="warn">${t.proj_fim||'sem projeção'}</span><br>`;
-    });
-    if (atrasadas.length > 6) r += `<br><span class="note">...e mais ${atrasadas.length-6} tarefa(s). Use o filtro 🔴 Atrasadas para ver todas.</span>`;
-    return r;
-  }
-
-  // ── Comparar obras ────────────────────────────────────────────
-  if (p.includes('compar') || p.includes('ranking') || p.includes('pior') || p.includes('melhor')) {
-    const ranking = todasObras
-      .map(([nome, o]) => {
-        const m = o.status.match(/(\d+) dias/);
-        return { nome: nome.replace(/EQTL [A-Z]{2}_/,''), dias: m ? parseInt(m[1]) : 0, badge: o.badge, sub: o.sub };
-      })
-      .sort((a,b) => b.dias - a.dias);
-    let r = `📊 <strong>Ranking de obras por atraso:</strong><br><br>`;
-    ranking.forEach((o, i) => {
-      const icon = o.badge==='badge-crit'?'🔴':o.badge==='badge-att'?'🟡':'🟢';
-      r += `${i+1}. ${icon} <strong>${o.nome}</strong> — ${o.dias > 0 ? o.dias+' dias de atraso' : 'No prazo'}<br>`;
-    });
-    return r;
-  }
-
-  // ── Resumo executivo ──────────────────────────────────────────
-  if (p.includes('resumo') || p.includes('executivo') || p.includes('geral') || p.includes('sumário')) {
-    const total    = todasObras.length;
-    const criticas = todasObras.filter(([,o]) => o.badge==='badge-crit').length;
-    const atencao  = todasObras.filter(([,o]) => o.badge==='badge-att').length;
-    const prazo    = todasObras.filter(([,o]) => o.badge==='badge-ok').length;
-    const maxAtraso = todasObras.reduce((max,[,o]) => {
-      const m = o.status.match(/(\d+) dias/); return Math.max(max, m?parseInt(m[1]):0);
-    }, 0);
-    const maisAtrasada = todasObras.find(([,o]) => o.status.includes(String(maxAtraso)));
-
-    let r = `📋 <strong>Resumo Executivo — Carteira EQTL</strong><br><br>`;
-    r += `Total de obras monitoradas: <strong>${total}</strong><br>`;
-    r += `🔴 Críticas (>30 dias): <span class="warn"><strong>${criticas}</strong></span><br>`;
-    r += `🟡 Atenção (1-30 dias): <span class="note"><strong>${atencao}</strong></span><br>`;
-    r += `🟢 No prazo: <span class="hi"><strong>${prazo}</strong></span><br><br>`;
-    if (maisAtrasada) {
-      r += `Maior atraso: <span class="warn"><strong>${maisAtrasada[0].replace(/EQTL [A-Z]{2}_/,'')} — ${maxAtraso} dias</strong></span><br>`;
-    }
-    r += `<br><span style="font-size:11px;color:#718096">Algoritmo v1.3 · Atualizado hoje</span>`;
-    return r;
-  }
-
-  // ── Simular compressão ────────────────────────────────────────
-  if (p.includes('compress') || p.includes('compacta') || p.includes('simul')) {
-    const [tot,concl,atras,,prazo,,] = obra.kpis;
-    const m = obra.status.match(/(\d+) dias/);
-    const dias = m ? parseInt(m[1]) : 0;
-    if (dias === 0)
-      return `<span class="hi">✅ Obra já está no prazo — compressão não necessária!</span>`;
-    const diasComp = Math.round(dias * 0.6);
-    let r = `🗜️ <strong>Simulação de Compressão — ${obraAtiva.replace(/EQTL [A-Z]{2}_/,'')}</strong><br><br>`;
-    r += `Atraso atual (realista): <span class="warn"><strong>${dias} dias</strong></span><br>`;
-    r += `Após compressão (fator 0.6): <span class="note"><strong>${diasComp} dias</strong></span><br><br>`;
-    r += `Use o toggle <strong>🗜️ Compactado</strong> na barra superior para ver o cenário otimista com todas as datas comprimidas.`;
-    return r;
-  }
-
-  // ── Priorizar etapa ───────────────────────────────────────────
-  if (p.includes('prioriz') || p.includes('etapa') || p.includes('focar') || p.includes('foco')) {
-    const criticas_atrasadas = obra.tarefas.filter(t => t.critica && t.status === 'atrasada' && !t.resumo);
-    const criticas_risco    = obra.tarefas.filter(t => t.critica && t.status !== 'concl' && !t.resumo);
-    let r = `🎯 <strong>Priorização — ${obraAtiva.replace(/EQTL [A-Z]{2}_/,'')}</strong><br><br>`;
-    if (criticas_atrasadas.length > 0) {
-      r += `<span class="warn">⚡ Tarefas críticas ATRASADAS (ação imediata):</span><br>`;
-      criticas_atrasadas.forEach(t => {
-        r += `• <strong>${t.nome}</strong> (${t.pct}%) → ${t.proj_fim}<br>`;
-      });
-      r += '<br>';
-    }
-    if (criticas_risco.length > 0) {
-      r += `<span class="note">⚡ Demais tarefas críticas em aberto:</span><br>`;
-      criticas_risco.filter(t => t.status !== 'atrasada').slice(0,4).forEach(t => {
-        r += `• <strong>${t.nome}</strong> (${t.pct}%)<br>`;
-      });
-    }
-    if (criticas_atrasadas.length === 0 && criticas_risco.length === 0)
-      r += '<span class="hi">✅ Nenhuma tarefa crítica em risco no momento!</span>';
-    return r;
-  }
-
-  return null; // não reconheceu — vai para API ou fallback
-}
-
 async function callAgent(pergunta){
-  // Tenta responder localmente primeiro
-  const respostaLocal = responderLocal(pergunta);
-  if (respostaLocal) return respostaLocal;
-
-  // Fallback — modo demonstração
-  return `<span class="note">💡 Modo demonstração</span> — ainda não sei responder "<strong>${pergunta}</strong>" automaticamente.<br><br>
-Tente perguntar:<br>
-• "O que está em risco?"<br>
-• "Obras críticas"<br>
-• "Tarefas que atrasam"<br>
-• "Comparar obras"<br>
-• "Resumo executivo"<br>
-• "Priorizar etapa"<br>
-• "Simular compressão"`;
+  const ctx=getContexto();
+  const system=`Você é assistente especialista em obras de infraestrutura da EQTL. Responda direto, conciso, máximo 4 parágrafos. Use <strong> para valores. Use <span class="hi"> positivo, <span class="warn"> crítico, <span class="note"> atenção.\n\nContexto:\n${ctx}`;
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system,messages:[{role:'user',content:pergunta}]})});
+    const d=await r.json();
+    if(d.content&&d.content[0]) return d.content[0].text;
+    return 'Não foi possível obter resposta.';
+  }catch(e){
+    return `<span class="note">Modo demonstração</span> — API não configurada. Em produção responderei com análise real.<br><br>Pergunta: <strong>"${pergunta}"</strong>`;
+  }
 }
 async function sendMsg(){
   const inp=document.getElementById('agent-inp');
